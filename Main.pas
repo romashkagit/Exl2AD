@@ -205,7 +205,7 @@ begin
     SaveLog('Создание/обновление учетных записей',clYellow);
     //Проходим по списку пользователей
     //  UserDirectory.Add('r.ivanov',TUserInfo.Create('Иванов Роман Олегович','12345','','','','',512));
-  {  for pair  in UserDirectory do
+    for pair  in UserDirectory do
     begin
     Application.ProcessMessages;
     vlogin:=GetAD_UserName(pair.Value.FIO, Fdomen);
@@ -213,7 +213,7 @@ begin
      UpdateUser(pair)
     else
      CreateUser(pair);//UserDirectory.ExtractPair('r.ivanov'));
-    end; }
+    end;
     SaveLog('Обновление данных пользователей в AD завершено',clYellow);
     ShowMessage('Обновление данных пользователей в AD завершено!');
 end;
@@ -388,7 +388,7 @@ begin
  try
  try
   Value:=pair.Value;
-  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.Create('user','CN='+Value.FIO) as IADsUser;
   FIO :=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
@@ -431,7 +431,7 @@ begin
   SaveLog('Пользователь '+Value.FIO+' создан в Active Directory');
  except
   on E: EOleException do begin
-  SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message, clRed);
+  SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message+': '+E.StackTrace, clRed);
   end;
  end;
  finally
@@ -493,7 +493,7 @@ begin
   SaveLog('Пользователь '+pair.Value.FIO+' изменен в Active Directory');
  except
   on E: EOleException do begin
-  SaveLog('Ошибка при изменении пользователя '+Value.FIO+': ' + E.Message, clRed);
+  SaveLog('Ошибка при изменении пользователя '+Value.FIO+': ' + E.Message+': '+E.StackTrace, clRed);
   end;
  end;
  finally
