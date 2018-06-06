@@ -382,14 +382,17 @@ var
  Usr: IADsUser;
  Comp: IADsContainer;
  Value:TUserInfo;
+ oper: String;
  FIO, MailList: TStringList;
  i: integer;
 begin
  try
  try
   Value:=pair.Value;
-  Comp := GetObject('LDAP://CN=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  oper:='присвоение пути';
+  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.Create('user','CN='+Value.FIO) as IADsUser;
+  oper:='парсинг ФИО';
   FIO :=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
   for i:=0 to FIO.Count-1  do
@@ -400,6 +403,7 @@ begin
        2:  IF FIO[1][1]+FIO[2][1]<> '' THEN Usr.Put('initials',FIO[1][1]+'.' +FIO[2][1]+'.');
       end;
   end;
+  oper:='присвоение параметров';
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
   IF Value.title <> '' THEN  Usr.put('title',Value.title);
   //Usr.put('userAccountControl',Value.status);  //статус
@@ -408,6 +412,7 @@ begin
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
  // IF Value.company <> '' THEN Usr.Put('company', Value.company);
   IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
+   oper:='парсинг почтовых доменов';
   if Value.domens<> '' THEN
   begin
   MailList:=TStringList.Create;
@@ -426,12 +431,13 @@ begin
   Usr.put('userPrincipalName',pair.Key);//GetADName(Fullname,0));
  // else   //Если есть, то добавляем отчество
  // Usr.put('userPrincipalName',GetADName(Fullname,1));
+  oper:='фиксирование изменений';
   Usr.SetInfo;
   IF Value.pswd <> '' THEN Usr.SetPassword(Value.pswd);
   SaveLog('Пользователь '+Value.FIO+' создан в Active Directory');
  except
   on E: EOleException do begin
-  SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message+': '+E.StackTrace, clRed);
+  SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message+'+( '+oper+'): '+E.StackTrace, clRed);
   end;
  end;
  finally
@@ -444,6 +450,7 @@ end;
 procedure TExl2ADfm.UpdateUser(pair : TPAir<string, TUserInfo>);//ADName,Fullname,Pswd,DutyName,Status,Phone,Room,Department,EmployeeType: string);
 var
  Usr: IADsUser;
+ oper: String;
  Comp: IADsContainer;
  Value:TUserInfo;
  FIO, MailList: TStringList;
@@ -451,9 +458,11 @@ var
 begin
  try
  try
+  oper:='присвоение пути';
   Value:=pair.Value;
-  Comp := GetObject('LDAP://CN=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.GetObject('user','CN='+Value.FIO)  as IADsUser;
+  oper:='парсинг ФИО';
   FIO:=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
   for i:=0 to FIO.Count-1  do
@@ -464,6 +473,7 @@ begin
        2:  IF FIO[1][1]+FIO[2][1]<> '' THEN Usr.Put('initials',FIO[1][1]+'.' +FIO[2][1]+'.');
       end;
   end;
+   oper:='присвоение параметров';
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
   IF Value.title <> '' THEN  Usr.put('title',Value.title);
   //Usr.put('userAccountControl',Value.status);  //статус
@@ -472,6 +482,7 @@ begin
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
  // IF Value.company <> '' THEN Usr.Put('company', Value.company);
   IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
+  oper:='парсинг почтовых доменов';
   if Value.domens<> '' THEN
   begin
   MailList:= TStringList.Create;
@@ -489,11 +500,12 @@ begin
 
   Usr.put('sAMAccountName',pair.Key);
     // Usr:=Comp.MoveHere('LDAP://CN='+vOldValue+',DC='+Fd1+',DC='+Fd2',vNewValue) as IADsUser ;
+  oper:='фиксирование изменений';
      Usr.SetInfo;
   SaveLog('Пользователь '+pair.Value.FIO+' изменен в Active Directory');
  except
   on E: EOleException do begin
-  SaveLog('Ошибка при изменении пользователя '+Value.FIO+': ' + E.Message+': '+E.StackTrace, clRed);
+  SaveLog('Ошибка при изменении пользователя '+Value.FIO+'( '+oper+'): '+ E.Message, clRed);
   end;
  end;
  finally
@@ -531,13 +543,27 @@ d:TStringList;
 begin
       UserDirectory:=TDictionary<string, TUserInfo>.Create();
       //Чтение
+      if FileExists(ExtractFilePath(Application.ExeName)+'Exl2AD.ini') then
+      begin
       FileSetAttr(ExtractFilePath(Application.ExeName)+'Exl2AD.ini', faHidden);
       Init1:= TIniFile.Create(ExtractFilePath(Application.ExeName)+'Exl2AD.ini');
       Fdomen:= init1.ReadString('Domen info','Domen', '');
+      if Fdomen='' then
+      begin
+      ShowMessage('Не найден домен!');
+      Abort;
+      end;
       d:=TStringList.Create;
       d:=get_wl(Fdomen,'.');
       Fd1:=d[0];
       Fd2:=d[1];
+      end
+      else
+      begin
+      ShowMessage('Не найден конфигурационный файл!');
+      Abort;
+      end;
+
 end;
 
 
