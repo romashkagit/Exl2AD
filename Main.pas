@@ -220,18 +220,18 @@ end;
 
 procedure TExl2ADfm.LoadExl;
 const
- arCollNames_List1 : Array [1..11,1..2] of string =
- (('A','Статус'),
-  ('B','Логин'),
-  ('C','Пароль'),
-  ('D','ФИО'),
-  ('E', 'Должность'),
-  ('F','Телефон'),
+ arCollNames_List1 : Array [1..9,1..2] of string =
+ (//('A','Статус'),
+  ('A','Логин'),
+  ('B','Пароль'),
+  ('C','ФИО'),
+  ('D', 'Должность'),
+  ('E','Телефон'),
   ('G', 'Кабинет'),
-  ('H','Организация'),
-  ('I','Подразделение'),
-  ('J','Руководитель'),
-  ('K','Почтовый домен')
+  //('H','Организация'),
+  ('H','Подразделение'),
+  ('I','Руководитель'),
+  ('J','Почтовый домен')
   );
 
 Function IColByName(lv_nameCol:String; pi_sgn_Doc:string):LongInt;
@@ -314,13 +314,13 @@ try
       if lv_sgn_List1  then
       begin
         //status
-        sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
+        {sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp = 'R' then
         vstatus:=512
         else
-        vstatus:=514;
+        vstatus:=514;  }
         // LOGIN
-        sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('B',lv_NameWorkSheet)];
+        sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp <> '' then
         vlogin :=sTmp
         else
@@ -332,23 +332,23 @@ try
         Continue;
         end;
         // pswd
-        vPswd:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('C',lv_NameWorkSheet)];
+        vPswd:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('B',lv_NameWorkSheet)];
          // FIO
-        vFIO:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('D',lv_NameWorkSheet)];
+        vFIO:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('C',lv_NameWorkSheet)];
         // title
-        vtitle:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('E',lv_NameWorkSheet)];
+        vtitle:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('D',lv_NameWorkSheet)];
         //phone
-        vphone:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('F',lv_NameWorkSheet)];
+        vphone:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('E',lv_NameWorkSheet)];
         //room
         vroom:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('G',lv_NameWorkSheet)];
         //company
-        vcompany:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('H',lv_NameWorkSheet)];
+        //vcompany:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('',lv_NameWorkSheet)];
         //department
-        vdepartment:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('I',lv_NameWorkSheet)];
+        vdepartment:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('H',lv_NameWorkSheet)];
         //manager
-        vmanager:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('J',lv_NameWorkSheet)];
+        vmanager:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('I',lv_NameWorkSheet)];
         //domens
-        vdomens:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('K',lv_NameWorkSheet)];
+        vdomens:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('J',lv_NameWorkSheet)];
         UserDirectory.Add(vlogin,TUserInfo.Create(vFIO,vPswd,vtitle,vphone,vroom,vcompany,vdepartment,vmanager,vdomens,vstatus));
         SaveLog('Добавлен из xls в список пользователь '+vlogin);
       end;
@@ -400,12 +400,12 @@ begin
       end;
   end;
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
-  IF Value.title <> '' THEN  Usr.put('title',Value.title);
+  //IF Value.title <> '' THEN  Usr.put('title',Value.title);
   Usr.put('userAccountControl',Value.status);  //статус
   IF Value.phone <> '' THEN Usr.Put('telephoneNumber',Value.phone);   //телефон
   IF Value.room <> '' THEN Usr.Put('physicalDeliveryOfficeName',Value.room);//кабинет
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
-  IF Value.company <> '' THEN Usr.Put('company', Value.company);
+ // IF Value.company <> '' THEN Usr.Put('company', Value.company);
   IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
   if Value.domens<> '' THEN
   begin
@@ -451,7 +451,7 @@ begin
  try
  try
   Value:=pair.Value;
-  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.GetObject('user','CN='+Value.FIO)  as IADsUser;
   FIO:=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
@@ -465,11 +465,11 @@ begin
   end;
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
   IF Value.title <> '' THEN  Usr.put('title',Value.title);
-  Usr.put('userAccountControl',Value.status);  //статус
+  //Usr.put('userAccountControl',Value.status);  //статус
   IF Value.phone <> '' THEN Usr.Put('telephoneNumber',Value.phone);   //телефон
   IF Value.room <> '' THEN Usr.Put('physicalDeliveryOfficeName',Value.room);//кабинет
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
-  IF Value.company <> '' THEN Usr.Put('company', Value.company);
+ // IF Value.company <> '' THEN Usr.Put('company', Value.company);
   IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
   if Value.domens<> '' THEN
   begin
