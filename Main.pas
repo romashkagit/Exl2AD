@@ -205,33 +205,34 @@ begin
     SaveLog('Создание/обновление учетных записей',clYellow);
     //Проходим по списку пользователей
     //  UserDirectory.Add('r.ivanov',TUserInfo.Create('Иванов Роман Олегович','12345','','','','',512));
-    for pair  in UserDirectory do
+  {  for pair  in UserDirectory do
     begin
     Application.ProcessMessages;
     vlogin:=GetAD_UserName(pair.Value.FIO, Fdomen);
     if  vlogin=pair.key then
      UpdateUser(pair)
     else
-     CreateUser(pair);{UserDirectory.ExtractPair('r.ivanov'));}
-    end;
+     CreateUser(pair);//UserDirectory.ExtractPair('r.ivanov'));
+    end; }
     SaveLog('Обновление данных пользователей в AD завершено',clYellow);
     ShowMessage('Обновление данных пользователей в AD завершено!');
 end;
 
 procedure TExl2ADfm.LoadExl;
 const
- arCollNames_List1 : Array [1..9,1..2] of string =
+ arCollNames_List1 : Array [1..10,1..2] of string =
  (//('A','Статус'),
   ('A','Логин'),
   ('B','Пароль'),
   ('C','ФИО'),
   ('D', 'Должность'),
-  ('E','Телефон'),
-  ('G', 'Кабинет'),
+  ('E','№Тел'),
+  ('F', '№Тел.Гр.'),
+  ('G', '№Каб'),
   //('H','Организация'),
-  ('H','Подразделение'),
-  ('I','Руководитель'),
-  ('J','Почтовый домен')
+  ('H','Название подразделения/отдела'),
+  ('I','Кто руководитель?'),
+  ('J','Почта (домен)')
   );
 
 Function IColByName(lv_nameCol:String; pi_sgn_Doc:string):LongInt;
@@ -282,7 +283,7 @@ try
      HeadLine := 1;
      StartLine := 2;
      EndLine :=  ExcelApp.ActiveSheet.UsedRange.Rows.Count ;
-     iColIsLoad :=High(arCollNames_List1)+4 ;
+     iColIsLoad :=High(arCollNames_List1)+10 ;
    end;
    if  lv_sgn_List1  then
     begin
@@ -317,8 +318,8 @@ try
         {sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp = 'R' then
         vstatus:=512
-        else
-        vstatus:=514;  }
+        else    }
+        vstatus:=514;
         // LOGIN
         sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp <> '' then
@@ -400,8 +401,8 @@ begin
       end;
   end;
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
-  //IF Value.title <> '' THEN  Usr.put('title',Value.title);
-  Usr.put('userAccountControl',Value.status);  //статус
+  IF Value.title <> '' THEN  Usr.put('title',Value.title);
+  //Usr.put('userAccountControl',Value.status);  //статус
   IF Value.phone <> '' THEN Usr.Put('telephoneNumber',Value.phone);   //телефон
   IF Value.room <> '' THEN Usr.Put('physicalDeliveryOfficeName',Value.room);//кабинет
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
