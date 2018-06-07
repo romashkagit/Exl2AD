@@ -204,7 +204,8 @@ begin
     LoadExl;
     SaveLog('Создание/обновление учетных записей',clYellow);
     //Проходим по списку пользователей
-    //  UserDirectory.Add('r.ivanov',TUserInfo.Create('Иванов Роман Олегович','12345','','','','',512));
+     // UserDirectory.Add('r.ivanov',TUserInfo.Create('Иванов Роман Олегович','12345loiuytt','','','','','','','',512));
+
     for pair  in UserDirectory do
     begin
     Application.ProcessMessages;
@@ -343,6 +344,7 @@ try
         //room
         vroom:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('G',lv_NameWorkSheet)];
         //company
+        vcompany:='';
         //vcompany:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('',lv_NameWorkSheet)];
         //department
         vdepartment:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('H',lv_NameWorkSheet)];
@@ -351,7 +353,7 @@ try
         //domens
         vdomens:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('J',lv_NameWorkSheet)];
         UserDirectory.Add(vlogin,TUserInfo.Create(vFIO,vPswd,vtitle,vphone,vroom,vcompany,vdepartment,vmanager,vdomens,vstatus));
-        SaveLog('Добавлен из xls в список пользователь '+vlogin);
+        SaveLog('Добавлен из xls в список пользователь '+vlogin+vFIO+vPswd+vtitle+vphone+vroom+vcompany+vdepartment+vmanager+vdomens+FloattoStr(vstatus) );
       end;
   end;
   end;
@@ -379,7 +381,7 @@ end;
 
 procedure TExl2ADfm.CreateUser(pair : TPair<string, TUserInfo>);//ADName,Fullname,Pswd,DutyName,Status: string);
 var
- Usr: IADsUser;
+ Usr,Mng: IADsUser;
  Comp: IADsContainer;
  Value:TUserInfo;
  oper: String;
@@ -390,9 +392,11 @@ begin
  try
   Value:=pair.Value;
   oper:='присвоение пути';
-  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  //Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.Create('user','CN='+Value.FIO) as IADsUser;
   oper:='парсинг ФИО';
+  ShowMessage('CN='+Value.FIO);
   FIO :=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
   for i:=0 to FIO.Count-1  do
@@ -406,12 +410,20 @@ begin
   oper:='присвоение параметров';
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
   IF Value.title <> '' THEN  Usr.put('title',Value.title);
-  //Usr.put('userAccountControl',Value.status);  //статус
+  Usr.put('userAccountControl',Value.status);  //статус
   IF Value.phone <> '' THEN Usr.Put('telephoneNumber',Value.phone);   //телефон
   IF Value.room <> '' THEN Usr.Put('physicalDeliveryOfficeName',Value.room);//кабинет
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
- // IF Value.company <> '' THEN Usr.Put('company', Value.company);
-  IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
+  IF Value.company <> '' THEN Usr.Put('company', Value.company);
+  IF Value.manager <> '' then
+  try
+  Mng:=GetObject('LDAP://CN='+Value.manager+',CN=Users,DC='+Fd1+',DC='+Fd2)  as IADsUser;
+  Usr.Put('manager','CN='+Value.manager+',CN=Users,DC='+Fd1+',DC='+Fd2);
+  except
+  on E: Exception do begin
+  SaveLog('Не найден руководитель пользователя '+Value.FIO+'( '+oper+'): '+ E.Message, clRed);
+  end;
+  end;
    oper:='парсинг почтовых доменов';
   if Value.domens<> '' THEN
   begin
@@ -425,6 +437,8 @@ begin
   Usr.Put('mail',MailList.Text);
   end;
 
+
+
   Usr.put('sAMAccountName',pair.Key);
  //Проверим есть ли такая запись в ActiveDirectory
  //if (GetAD_UserName(GetADName(Fullname,0),'userPrincipalName')='') then
@@ -436,7 +450,7 @@ begin
   IF Value.pswd <> '' THEN Usr.SetPassword(Value.pswd);
   SaveLog('Пользователь '+Value.FIO+' создан в Active Directory');
  except
-  on E: EOleException do begin
+  on E: Exception do begin
   SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message+'+( '+oper+'): '+E.StackTrace, clRed);
   end;
  end;
@@ -449,7 +463,7 @@ end;
 
 procedure TExl2ADfm.UpdateUser(pair : TPAir<string, TUserInfo>);//ADName,Fullname,Pswd,DutyName,Status,Phone,Room,Department,EmployeeType: string);
 var
- Usr: IADsUser;
+ Usr, Mng: IADsUser;
  oper: String;
  Comp: IADsContainer;
  Value:TUserInfo;
@@ -460,7 +474,8 @@ begin
  try
   oper:='присвоение пути';
   Value:=pair.Value;
-  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  //Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.GetObject('user','CN='+Value.FIO)  as IADsUser;
   oper:='парсинг ФИО';
   FIO:=TStringList.Create;
@@ -476,12 +491,20 @@ begin
    oper:='присвоение параметров';
   IF Value.FIO  <> '' THEN Usr.Put('displayName',Value.FIO );     // выводимое имя
   IF Value.title <> '' THEN  Usr.put('title',Value.title);
-  //Usr.put('userAccountControl',Value.status);  //статус
+  Usr.put('userAccountControl',Value.status);  //статус
   IF Value.phone <> '' THEN Usr.Put('telephoneNumber',Value.phone);   //телефон
   IF Value.room <> '' THEN Usr.Put('physicalDeliveryOfficeName',Value.room);//кабинет
   IF Value.department <> '' THEN Usr.Put('department', Value.department);
- // IF Value.company <> '' THEN Usr.Put('company', Value.company);
-  IF Value.manager <> '' THEN Usr.Put('manager',Value.manager);
+  IF Value.company <> '' THEN Usr.Put('company', Value.company);
+  IF Value.manager <> '' then
+  try
+  Mng:=GetObject('LDAP://CN='+Value.manager+',CN=Users,DC='+Fd1+',DC='+Fd2)  as IADsUser;
+  Usr.Put('manager','CN='+Value.manager+',CN=Users,DC='+Fd1+',DC='+Fd2);
+  except
+  on E: Exception do begin
+  SaveLog('Не найден руководитель пользователя '+Value.FIO+'( '+oper+'): '+ E.Message, clRed);
+  end;
+  end;
   oper:='парсинг почтовых доменов';
   if Value.domens<> '' THEN
   begin
@@ -504,7 +527,7 @@ begin
      Usr.SetInfo;
   SaveLog('Пользователь '+pair.Value.FIO+' изменен в Active Directory');
  except
-  on E: EOleException do begin
+  on E: Exception do begin
   SaveLog('Ошибка при изменении пользователя '+Value.FIO+'( '+oper+'): '+ E.Message, clRed);
   end;
  end;
