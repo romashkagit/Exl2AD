@@ -7,7 +7,7 @@ uses
   Dialogs,ActiveX,   // используется для COM Moniker stuff...
   ActiveDs_TLB,   // созданная библиотека типов
   ComObj,// используется для OleCheck и других функций COM
-  StdCtrls, Vcl.ExtCtrls, Generics.Collections,ADODB, Data.DB, Vcl.ComCtrls,IniFiles;
+  StdCtrls, Vcl.ExtCtrls, Generics.Collections,ADODB, Data.DB, Vcl.ComCtrls,IniFiles,uLogManager;
 
 type
 
@@ -37,6 +37,10 @@ type
     procedure SaveLog(Msg :String;Color:TColor=clLime);
     procedure  ColorLine(RE : TRichEdit; Line : Integer; LineColor : TColor);
     procedure btnLoadExlClick(Sender: TObject);
+    procedure LogMngInfoEvent(const aLogMsg: string; aLogMsgType: TLogMsgType);
+    procedure AddLogStr(aLogMsg: string; aTextColor: TColor;
+  aAddTime: boolean);
+    procedure FormActivate(Sender: TObject);
   private
     { Private declarations }
   public
@@ -319,8 +323,9 @@ try
         {sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp = 'R' then
         vstatus:=512
-        else    }
-        vstatus:=514;
+        else
+        vstatus:=514; }
+        vstatus:=512;
         // LOGIN
         sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp <> '' then
@@ -353,7 +358,7 @@ try
         //domens
         vdomens:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('J',lv_NameWorkSheet)];
         UserDirectory.Add(vlogin,TUserInfo.Create(vFIO,vPswd,vtitle,vphone,vroom,vcompany,vdepartment,vmanager,vdomens,vstatus));
-        SaveLog('Добавлен из xls в список пользователь '+vlogin+vFIO+vPswd+vtitle+vphone+vroom+vcompany+vdepartment+vmanager+vdomens+FloattoStr(vstatus) );
+        SaveLog('Добавлен из xls в список пользователь '+vlogin);
       end;
   end;
   end;
@@ -392,11 +397,11 @@ begin
  try
   Value:=pair.Value;
   oper:='присвоение пути';
-  //Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
-  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+ // Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.Create('user','CN='+Value.FIO) as IADsUser;
   oper:='парсинг ФИО';
-  ShowMessage('CN='+Value.FIO);
+ // ShowMessage('CN='+Value.FIO);
   FIO :=TStringList.Create;
   FIO:=get_wl(Value.FIO,' ');
   for i:=0 to FIO.Count-1  do
@@ -431,7 +436,7 @@ begin
   MailList:=get_wl(StringReplace(Value.domens, '''', ' ',[rfReplaceAll, rfIgnoreCase]),',');
   for i := 0 to MailList.Count-1 do
   begin
-  MailList[i]:=  LowerCase(pair.Key)+MailList[i];
+  MailList[i]:=  LowerCase(pair.Key)+'@'+MailList[i];
   if i>0 then   MailList[i]:=', '+ MailList[i];
   end;
   Usr.Put('mail',MailList.Text);
@@ -474,8 +479,8 @@ begin
  try
   oper:='присвоение пути';
   Value:=pair.Value;
-  //Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
-  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  //Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.GetObject('user','CN='+Value.FIO)  as IADsUser;
   oper:='парсинг ФИО';
   FIO:=TStringList.Create;
@@ -513,7 +518,7 @@ begin
  // ShowMessage(MailList.Text);
   for i := 0 to MailList.Count-1 do
   begin
-  MailList[i]:= LowerCASE(pair.Key)+MailList[i];
+  MailList[i]:= LowerCASE(pair.Key)+'@'+MailList[i];
   if i>0 then   MailList[i]:=', '+ MailList[i];
   end;
  // ShowMessage(MailList.Text);
@@ -558,6 +563,17 @@ begin
     end;
   except
   end;
+end;
+
+procedure TExl2ADfm.FormActivate(Sender: TObject);
+begin
+  {$IFDEF Release}
+  LogMng.MaxLogLevel := lmlInfo;
+  {$ENDIF}
+  LogMng.FileName := ExtractFilePath(Application.ExeName) + 'general.log';
+  LogMng.OnLogEventObj := LogMngInfoEvent;
+  LogMng.LogEvent := True;
+  LogMng.WriteToLog('Программа запустилась!');
 end;
 
 procedure TExl2ADfm.FormCreate(Sender: TObject);
@@ -620,6 +636,31 @@ begin
 
  Result := Dispatch;
 
+end;
+
+
+// отображение логирования в реальном времени
+procedure TExl2ADfm.LogMngInfoEvent(const aLogMsg: string; aLogMsgType: TLogMsgType);
+begin
+  // выводим текст разного цвета в зависимости от типа лог-сообщения
+  case aLogMsgType of
+    lmtInfo: AddLogStr(aLogMsg, clWhite, False);
+    lmtWarning: AddLogStr(aLogMsg, clYellow, False);
+    lmtError: AddLogStr(aLogMsg, clRed, False);
+  end;
+end;
+
+procedure TExl2ADfm.AddLogStr(aLogMsg: string; aTextColor: TColor;
+  aAddTime: boolean);
+var
+  lm  : string;
+begin
+  if aAddTime then
+    DateTimeToString(lm, '[dd.mm.yyyy] [hh:mm:ss]: ', Now)
+  else
+    lm := '';
+  reLog.SelAttributes.Color := aTextColor; // вывод в TRichEdit
+  reLog.Lines.Add(lm + aLogMsg);
 end;
 
 
