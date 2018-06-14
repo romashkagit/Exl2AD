@@ -77,7 +77,7 @@ begin
   vmsg := FormatDateTime('DD.MM.YYYY hh:mm:ss', now)+ ' ' + Msg;
   reLog.Lines.Insert(0,vmsg);
   ColorLine(reLog,0,Color);
- { vpath :=  ExtractFilePath(Application.ExeName)+'Exl2AD.log';
+  vpath :=  ExtractFilePath(Application.ExeName)+'Exl2AD.log';
   vSl:=TStringList.Create;
   try
   if FileExists(vpath) then
@@ -86,7 +86,7 @@ begin
   finally
     vSl.SaveToFile(vpath);
     vSl.Destroy;
-  end;  }
+  end;
 end;
 
 procedure  TExl2ADfm.ColorLine(RE : TRichEdit; Line : Integer; LineColor : TColor);
@@ -269,7 +269,7 @@ var Rows, Cols, i,j: integer;
 begin
 vempty:=0;
 try
-//try
+try
   UserDirectory.Clear;
   OpenDialog:=TOpenDialog.Create(Self);
   if OpenDialog.Execute then
@@ -362,10 +362,10 @@ try
       end;
   end;
   end;
- { Except
+  Except
   on E : Exception do
    SaveLog('Ошибка: '+ E.Message, clRed);
-  end;}
+  end;
  finally
   SaveLog('Загрузка из Excel в словарь завершена',clYellow);
   openDialog.Destroy;
@@ -394,11 +394,11 @@ var
  i: integer;
 begin
  try
-// try
+ try
   Value:=pair.Value;
   oper:='присвоение пути';
-  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
- // Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+ // Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.Create('user','CN='+Value.FIO) as IADsUser;
   oper:='парсинг ФИО';
  // ShowMessage('CN='+Value.FIO);
@@ -454,11 +454,11 @@ begin
   Usr.SetInfo;
   IF Value.pswd <> '' THEN Usr.SetPassword(Value.pswd);
   SaveLog('Пользователь '+Value.FIO+' создан в Active Directory');
- {except
+ except
   on E: Exception do begin
   SaveLog('Ошибка при создании пользователя '+Value.FIO+': '+E.Message+'+( '+oper+'): '+E.StackTrace, clRed);
   end;
- end;   }
+ end;
  finally
     FIO.Free;
     MailList.Free;
@@ -476,11 +476,11 @@ var
   i: integer;
 begin
  try
-// try
+ try
   oper:='присвоение пути';
   Value:=pair.Value;
-  Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
-  //Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+ // Comp := GetObject('LDAP://OU=Users of STOLICH011,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
+  Comp := GetObject('LDAP://CN=Users,DC='+Fd1+',DC='+Fd2) as  IADsContainer;
   Usr := Comp.GetObject('user','CN='+Value.FIO)  as IADsUser;
   oper:='парсинг ФИО';
   FIO:=TStringList.Create;
@@ -531,11 +531,11 @@ begin
   oper:='фиксирование изменений';
      Usr.SetInfo;
   SaveLog('Пользователь '+pair.Value.FIO+' изменен в Active Directory');
- {except
+ except
   on E: Exception do begin
   SaveLog('Ошибка при изменении пользователя '+Value.FIO+'( '+oper+'): '+ E.Message, clRed);
   end;
- end;  }
+ end;
  finally
    FIO.Free;
    MailList.Free;
