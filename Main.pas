@@ -320,7 +320,7 @@ try
         if sTmp = 'R' then
         vstatus:=512
         else    }
-        vstatus:=512;
+        vstatus:=514;
         // LOGIN
         sTmp:=ExcelApp.ActiveSheet.Cells[iRow,IColByName('A',lv_NameWorkSheet)];
         if sTmp <> '' then
